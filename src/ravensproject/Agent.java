@@ -65,12 +65,21 @@ public class Agent {
      * @return your Agent's answer to this problem
      */
     public int Solve(RavensProblem problem) {
+        System.out.println("Solving "+problem.getName());
 
         // Array for potential answers
         List<String> answers = new ArrayList<>();
 
+        // Get row and col size
+        int row = Character.getNumericValue(problem.getProblemType().charAt(0));
+        int col = Character.getNumericValue(problem.getProblemType().charAt(2));
+
+
         // Todo - don't hardcode this for 2x2... make dynamic
         // Retrieve figures from problem
+        Map<String, RavensFigure> figureMap = problem.getFigures();
+
+        // Todo - DELETE
         RavensFigure figA = problem.getFigures().get("A");
         RavensFigure figB = problem.getFigures().get("B");
         RavensFigure figC = problem.getFigures().get("C");
@@ -81,7 +90,69 @@ public class Agent {
         RavensFigure fig5 = problem.getFigures().get("5");
         RavensFigure fig6 = problem.getFigures().get("6");
 
-        // Determine relationships between objects in figures
+        // Todo - could pull keyset as array and parse for numbers and letters
+        // Create list of figure keys for in-order list-matrix creation
+        List<String> figureKeyList = new ArrayList<>();
+        for (String name : figureMap.keySet())
+            if (name.matches("[A-Z]"))
+                figureKeyList.add(name);
+        Collections.sort(figureKeyList); //might not be necessary but just in case...
+
+        // Create list of solution keys for relationship forming (later)
+        List<String> solutionKeyList = new ArrayList<>();
+        for (String name : figureMap.keySet())
+            if (name.matches("[0-9]"))
+                solutionKeyList.add(name);
+        Collections.sort(solutionKeyList);
+
+        // Create list-matrix resembling RPM with null for placeholder on last entry
+        figureKeyList.add(figureKeyList.size(), null); //add null object as placeholder
+        List<List<RavensFigure>> ravensFiguresList = new ArrayList<>();
+        int ind = 0;
+        List<RavensFigure> ravensFigureList = new ArrayList<>();
+        while (ind <= (row * col) - 1) {
+            ravensFigureList.add(figureMap.get(figureKeyList.get(ind)));
+            int realInd = ind + 1;
+            if (realInd % col == 0) {
+                ravensFiguresList.add(ravensFigureList);
+                ravensFigureList = new ArrayList<>();
+            }
+            ind++;
+        }
+
+        // Determine left-right relationships between objects in figures
+        // Todo - maybe make this a map of lists of relationships...
+        Map<String, Map<String, List<String>>> probRelationshipsMap = new HashMap<>(); //e.g. AB -> RelationshipAB
+        RavensFigure lastRavensFigure = null;
+        for (List figureList : ravensFiguresList) {
+            for (int i = 0; i < figureList.size() - 1; i++) {
+                if (figureList.get(i+1) != null) {
+                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
+                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
+                    String relName = rFig1.getName() + rFig2.getName();
+                    probRelationshipsMap.put(relName, semanticNetwork.formRelationships(rFig1, rFig2)); //make more concise
+                } else {
+                    lastRavensFigure = (RavensFigure) figureList.get(i);
+                }
+            }
+        }
+
+        // Todo - determine up-down relationships as done above
+
+        // Determine left-right relationship to solutions (i.e. C -> #)
+        Map<String, Map<String, List<String>>> solRelationshipsMap = new HashMap<>();
+        for (String name : solutionKeyList) {
+            if (lastRavensFigure != null) {
+                RavensFigure rFig = figureMap.get(name);
+                String relName = lastRavensFigure.getName() + rFig.getName();
+                solRelationshipsMap.put(relName, semanticNetwork.formRelationships(lastRavensFigure, rFig));
+            } else
+                System.out.println("lastRavensFigure not defined."); //debug only
+        }
+
+        // Todo - determine up-down relationship to solutions (i.e. B -> #) as done above
+
+        // Todo - DELETE
         Map<String, List<String>>  figAtoFigB = semanticNetwork.formRelationships(figA, figB);
         Map<String, List<String>>  figCtoFig1 = semanticNetwork.formRelationships(figC, fig1);
         Map<String, List<String>>  figCtoFig2 = semanticNetwork.formRelationships(figC, fig2);
@@ -90,6 +161,7 @@ public class Agent {
         Map<String, List<String>>  figCtoFig5 = semanticNetwork.formRelationships(figC, fig5);
         Map<String, List<String>>  figCtoFig6 = semanticNetwork.formRelationships(figC, fig6);
 
+        // Todo - DELETE
         // Store relationships between C and solutions to map
         Map<String, Map<String, List<String>>> step1Sols = new HashMap<>();
         step1Sols.put("1", figCtoFig1);
@@ -98,6 +170,12 @@ public class Agent {
         step1Sols.put("4", figCtoFig4);
         step1Sols.put("5", figCtoFig5);
         step1Sols.put("6", figCtoFig6);
+
+
+
+        // Todo - call determineTransformations()
+
+
 
         // Determine transformations between figures
         int figAtoFigBDiff = figB.getObjects().keySet().size() - figA.getObjects().keySet().size();
@@ -204,4 +282,21 @@ public class Agent {
 
         return bestList;
     }
+
+    public void determineTransformations(Map<String, List<String>> relationship) {
+
+    }
 }
+
+/*
+Todo:
++ maybe sub-in solution into ravensFiguresList to run analysis on
+--> too much re-analysis of items already analyzed
+--> try to just sub-in and form relation between sub and surrounding
+    figures (i.e. only C -> # and B -> # instead of A -> B, A -> C
+    as well...
++ create separate method for comparing relationships between objects
+--> called after left-right relationship forming and called after up-down
+    relationship forming
++ might have to redo ravenFiguresList for up-down creation (or duplicate)
+ */
