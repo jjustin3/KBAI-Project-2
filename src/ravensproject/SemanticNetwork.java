@@ -11,9 +11,13 @@ import java.util.Map;
 public class SemanticNetwork {
 
     private Generator generator;
+    private List<List<RavensObject>> objectPairs;
+    private Map<String, List<String>> transformationMap;
 
     public SemanticNetwork(Generator generator) {
         this.generator = generator;
+        objectPairs = new ArrayList<>();
+        transformationMap = new HashMap<>();
     }
 
     /**
@@ -53,25 +57,39 @@ public class SemanticNetwork {
             int score = 0;
 
             Map<String, List<String>> relationships = new HashMap<>();
+            List<List<RavensObject>> pairs = new ArrayList<>();
+            Map<String, List<String>> transformations = new HashMap<>();
             for (List<String> pair : (List<List<String>>)generator.formPairs(figure1Names, permutation)) {
                 RavensObject fig1Object = figure1Objects.get(pair.get(0));
                 RavensObject fig2Object = figure2Objects.get(pair.get(1));
                 List<String> fig1AttrList = new ArrayList<>();
                 List<String> fig2AttrList = new ArrayList<>();
 
-                if (fig1Object == null && fig2Object != null)
+                List<String> transformationList = new ArrayList<>();
+
+                if (fig1Object == null && fig2Object != null) {
                     fig2AttrList.add("added");
-                else if (fig1Object != null && fig2Object == null)
+                    transformationList.add("added");
+                } else if (fig1Object != null && fig2Object == null) {
                     fig1AttrList.add("deleted");
-                else if (fig1Object != null && fig2Object != null) {
+                    transformationList.add("deleted");
+                } else if (fig1Object != null && fig2Object != null) {
+
+                    //add only when pair exists (i.e. if no objects in pair are null)
+                    List<RavensObject> figurePair = new ArrayList<>();
+                    figurePair.add(fig1Object);
+                    figurePair.add(fig2Object);
+                    pairs.add(figurePair);
+
                     HashMap<String, String> fig1Attributes = fig1Object.getAttributes();
                     HashMap<String, String> fig2Attributes = fig2Object.getAttributes();
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "shape")) {
                         score += 5;
                         fig2AttrList.add("sameShape");
-                    } else if (fig1Attributes.get("shape") != null && fig2Attributes.get("shape") != null)
+                    } else if (fig1Attributes.get("shape") != null && fig2Attributes.get("shape") != null) {
                         fig2AttrList.add("diffShape");
+                    }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "size")) {
                         score += 5;
@@ -118,6 +136,28 @@ public class SemanticNetwork {
                         fig2AttrList.add(Integer.toString(angleDiff));
                     }
 
+                    //this won't work because proportion will change with each object added
+//                    if (fig1Attributes.get("left-of") != null && fig2Attributes.get("left-of") != null) {
+//                        double fig1Proportion = Double.parseDouble(fig1Attributes.get("left-of"))
+//                                / (double) figure1Objects.keySet().size();
+//                        double fig2Proportion = Double.parseDouble(fig2Attributes.get("left-of"))
+//                                / (double) figure2Objects.keySet().size();
+//
+//                        if (fig1Proportion == fig2Proportion)
+//                            score += 5;
+//                    }
+//
+//                    if (fig1Attributes.get("above") != null && fig2Attributes.get("above") != null) {
+//                        double fig1Proportion = Double.parseDouble(fig1Attributes.get("above"))
+//                                / (double) figure1Objects.keySet().size();
+//                        double fig2Proportion = Double.parseDouble(fig2Attributes.get("above"))
+//                                / (double) figure2Objects.keySet().size();
+//
+//                        if (fig1Proportion == fig2Proportion)
+//                            score += 5;
+//                    }
+
+
                 }
 
                 if (fig1Object != null && !fig1AttrList.isEmpty())
@@ -129,6 +169,7 @@ public class SemanticNetwork {
             // Update the best relationship if this current score is better than the best
             if (score > bestScore) {
                 bestRelationships = relationships;
+                objectPairs = pairs;
                 bestScore = score;
             }
 
@@ -260,5 +301,9 @@ public class SemanticNetwork {
         }
 
         return Integer.toString(change);
+    }
+
+    public List<List<RavensObject>> getObjectPairs() {
+        return objectPairs;
     }
 }
