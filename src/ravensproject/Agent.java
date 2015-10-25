@@ -111,7 +111,6 @@ public class Agent {
 
         // Determine left-right relationships between objects in figures
         // Todo - maybe make this a map of lists of relationships...
-//        Map<String, Map<String, List<String>>> probRelationshipsMap = new HashMap<>(); //e.g. AB -> RelationshipAB
         List<List<Relationship>> probRelationshipsList = new ArrayList<>(); //list of lists of relationships
         RavensFigure lastRavensFigure = null;
         for (List figureList : ravensFiguresList) {
@@ -120,12 +119,8 @@ public class Agent {
                 if (figureList.get(i+1) != null) {
                     RavensFigure rFig1 = (RavensFigure) figureList.get(i);
                     RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
-//                    String relName = rFig1.getName() + rFig2.getName();
                     Relationship relationship = new Relationship(rFig1, rFig2);
                     tempRelationshipList.add(relationship);
-
-//                    tempRelationshipList.add(semanticNetwork.formRelationships(rFig1, rFig2));
-//                    probRelationshipsMap.put(relName, semanticNetwork.formRelationships(rFig1, rFig2)); //make more concise
                 } else {
                     lastRavensFigure = (RavensFigure) figureList.get(i);
                 }
@@ -140,38 +135,49 @@ public class Agent {
         for (String name : solutionKeyList) {
             if (lastRavensFigure != null) {
                 RavensFigure rFig = figureMap.get(name);
-//                String relName = lastRavensFigure.getName() + rFig.getName();
                 Relationship relationship = new Relationship(lastRavensFigure, rFig);
                 solRelationshipsList.add(relationship);
-
-//                solRelationshipsMap.put(relName, semanticNetwork.formRelationships(lastRavensFigure, rFig));
             } else
                 System.out.println("lastRavensFigure not defined."); //debug only
         }
 
         // Todo - determine up-down relationship to solutions (i.e. B -> #) as done above
 
-//        for (List<Relationship> relationships : probRelationshipsList)
-//            System.out.println(determineTransformations(relationships));
-
         List<List<String>> transformationsList = new ArrayList<>();
-        for (int i = 0; i < probRelationshipsList.size() - 1; i++)
+//        List<List<Integer>> numObjDiffList = new ArrayList<>();
+        List<List<String>> objDiffList = new ArrayList<>();
+        int max, min = 0;
+        for (int i = 0; i < probRelationshipsList.size() - 1; i++) {
             transformationsList.add(determineTransformations(probRelationshipsList.get(i)));
+            List<String> objDiffs = new ArrayList<>(determineNumObjGrowing(probRelationshipsList.get(i)));
+            objDiffList.add(objDiffs);
+        }
+
+//        boolean isGrowing = determineNumObjGrowing(probRelationshipsList, solRelationshipsList);
+
+//        // Determine if number of objects is growing throughout relationships
+//        for (List<Integer> numRelObjDiff : numObjDiffList) {
+//            int diff = 0;
+//            for (Integer objDiff : numRelObjDiff)
+//                diff += objDiff;
+//        }
 
         int bestScore = 0;
         Relationship bestRelationship = null;
         for (Relationship solRelation : solRelationshipsList) {
-                        List<Relationship> tempRelationships =
+            List<Relationship> tempRelationships =
                     new ArrayList<>((probRelationshipsList.get(probRelationshipsList.size()-1)));
             tempRelationships.add(solRelation);
             List<String> tempTransformations = determineTransformations(tempRelationships);
+            List<String> tempObjDiffs = determineNumObjGrowing(tempRelationships);
 
             System.out.print("Calling determineScores for "+solRelation.getName()+": ");
             int score = determineScores(transformationsList, tempTransformations);
+            score += determineScores(objDiffList, tempObjDiffs);
             System.out.println(score);
             if (score > bestScore) {
                 bestScore = score;
-                bestRelationship = solRelation;
+                bestRelationship = solRelation; // will only grab the latest best score
             }
         }
 
@@ -338,10 +344,8 @@ public class Agent {
     public int determineScores(List<List<String>> transformationsList, List<String> tempTransformations) {
         int score = 0;
         for (List<String> transformations : transformationsList) {
-//            List<String> probTransformations = new ArrayList<>(transformations);
             List<String> solTransformations = new ArrayList<>(tempTransformations);
 
-//            System.out.println(transformations +" -> "+solTransformations);
             for (String transformation : transformations) {
                 if (solTransformations.contains(transformation)) {
                     solTransformations.remove(transformation);
@@ -359,6 +363,20 @@ public class Agent {
 
 
         return score;
+    }
+
+    public List<String> determineNumObjGrowing(List<Relationship> relationshipList) {
+        List<String> objDiffs = new ArrayList<>();
+        for (Relationship relationship : relationshipList) {
+            if (relationship.getNumObjDiff() > 0)
+                objDiffs.add("growing");
+            else if (relationship.getNumObjDiff() < 0)
+                objDiffs.add("shrinking");
+//            else
+//                objDiffs.add("same")
+        }
+
+        return objDiffs;
     }
 
 }

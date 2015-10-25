@@ -128,7 +128,9 @@ public class SemanticNetwork {
                         fig2AttrList.add(fill);
                         if (fig1Attributes.get("fill").equals("yes") && fig2Attributes.get("fill").equals("no"))
                             transformationList.add("unfill");
-                        if (fig1Attributes.get("fill").equals("no") && fig2Attributes.get("fill").equals("yes"))
+                        else if (fig1Attributes.get("fill").equals("no") && fig2Attributes.get("fill").equals("yes"))
+                            transformationList.add("fill");
+                        else
                             transformationList.add("fill-"+fill);
                     }
 
@@ -171,6 +173,18 @@ public class SemanticNetwork {
                     if (fig1Attributes.get("above") != null && fig2Attributes.get("above") != null) {
                         String[] fig1Above = fig1Attributes.get("above").split(",");
                         String[] fig2Above = fig1Attributes.get("above").split(",");
+                        double fig1Proportion = 1 - ((double) fig1Above.length
+                                / (double) figure1Objects.keySet().size());
+                        double fig2Proportion = (double) fig2Above.length
+                                / (double) figure2Objects.keySet().size();
+                        if (fig1Proportion == fig2Proportion)
+                            score += 5;
+                    }
+
+                    // Todo - check if this is actually beneficial or if it is detrimental
+                    if (fig1Attributes.get("overlaps") != null && fig2Attributes.get("overlaps") != null) {
+                        String[] fig1Above = fig1Attributes.get("overlaps").split(",");
+                        String[] fig2Above = fig1Attributes.get("overlaps").split(",");
                         double fig1Proportion = 1 - ((double) fig1Above.length
                                 / (double) figure1Objects.keySet().size());
                         double fig2Proportion = (double) fig2Above.length

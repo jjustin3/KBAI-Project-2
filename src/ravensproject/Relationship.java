@@ -15,6 +15,7 @@ public class Relationship {
     private Map<String, List<String>> relationship;
     private List<List<RavensObject>> objectPairs;
     private Map<String, List<String>> transformationMap;
+    private int numObjDiff; //maybe move to scores in SemanticNetwork
 
     // Todo - maybe pass in SemanticNetwork and Generator to recycle logic
     public Relationship(RavensFigure fig1, RavensFigure fig2) {
@@ -26,7 +27,7 @@ public class Relationship {
         relationship = semanticNetwork.formRelationships(fig1, fig2);
         objectPairs = semanticNetwork.getObjectPairs();
         transformationMap = semanticNetwork.getTransformationMap();
-
+        numObjDiff = fig2.getObjects().keySet().size() - fig1.getObjects().keySet().size();
     }
 
     public String getName() {
@@ -51,6 +52,10 @@ public class Relationship {
 
     public Map<String, List<String>> getTransformationMap() {
         return transformationMap;
+    }
+
+    public int getNumObjDiff() {
+        return numObjDiff;
     }
 
 }
