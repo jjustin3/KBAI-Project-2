@@ -74,27 +74,121 @@ public class Agent {
         int row = Character.getNumericValue(problem.getProblemType().charAt(0));
         int col = Character.getNumericValue(problem.getProblemType().charAt(2));
 
-
-        // Todo - don't hardcode this for 2x2... make dynamic
         // Retrieve figures from problem
         Map<String, RavensFigure> figureMap = problem.getFigures();
 
-        // Todo - could pull keyset as array and parse for numbers and letters
-        // Create list of figure keys for in-order list-matrix creation
-        List<String> figureKeyList = new ArrayList<>();
-        for (String name : figureMap.keySet())
-            if (name.matches("[A-Z]"))
-                figureKeyList.add(name);
-        Collections.sort(figureKeyList); //might not be necessary but just in case...
+        // Get list of figure names for problem
+        List<String> figureKeyListLR = createKeyList(figureMap, "[A-Z]");
+        // Todo - get UD
 
-        // Create list of solution keys for relationship forming (later)
-        List<String> solutionKeyList = new ArrayList<>();
-        for (String name : figureMap.keySet())
-            if (name.matches("[0-9]"))
-                solutionKeyList.add(name);
-        Collections.sort(solutionKeyList);
+        // Get list of figure names for solutions
+        List<String> solutionKeyListLR = createKeyList(figureMap, "[0-9]");
+        // Todo - get UD
 
         // Create list-matrix resembling RPM with null for placeholder on last entry
+        List<List<RavensFigure>> ravensFiguresListLR =
+                new ArrayList<>(getRavensMatrix(figureMap, figureKeyListLR, row, col));
+//        List<List<RavensFigure>> ravensFiguresListUD =
+//                new ArrayList<>(generateUpDownMatrix(ravensFiguresListLR));
+        List<List<RavensFigure>> ravensFiguresListUD = ravensFiguresListLR;
+        // Todo - get UD
+
+        // Determine left-right relationships between objects in figures
+        List<List<Relationship>> probRelationshipsListLR = new ArrayList<>(); //list of lists of relationships
+        RavensFigure lastRavensFigureLR = null;
+        for (List figureList : ravensFiguresListLR) {
+            List<Relationship> tempRelationshipList = new ArrayList<>();
+            for (int i = 0; i < figureList.size() - 1; i++) {
+                if (figureList.get(i+1) != null) {
+                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
+                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
+                    Relationship relationship = new Relationship(rFig1, rFig2);
+                    tempRelationshipList.add(relationship);
+                } else {
+                    lastRavensFigureLR = (RavensFigure) figureList.get(i);
+                }
+            }
+            probRelationshipsListLR.add(tempRelationshipList);
+        }
+
+        // Determine up-down relationships between objects in figures
+        List<List<Relationship>> probRelationshipsListUD = new ArrayList<>(); //list of lists of relationships
+        RavensFigure lastRavensFigureUD = null;
+        for (List figureList : ravensFiguresListUD) {
+            List<Relationship> tempRelationshipList = new ArrayList<>();
+            for (int i = 0; i < figureList.size() - 1; i++) {
+                if (figureList.get(i+1) != null) {
+                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
+                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
+                    Relationship relationship = new Relationship(rFig1, rFig2);
+                    tempRelationshipList.add(relationship);
+                } else {
+                    lastRavensFigureUD = (RavensFigure) figureList.get(i);
+                }
+            }
+            probRelationshipsListUD.add(tempRelationshipList);
+        }
+
+        // Determine left-right relationship to solutions (i.e. C -> #)
+        List<Relationship> solRelationshipsListLR = new ArrayList<>();
+        for (String name : solutionKeyListLR) {
+            if (lastRavensFigureLR != null) {
+                RavensFigure rFig = figureMap.get(name);
+                Relationship relationship = new Relationship(lastRavensFigureLR, rFig);
+                solRelationshipsListLR.add(relationship);
+            } else
+                System.out.println("lastRavensFigureLR not defined."); //debug only
+        }
+
+        // Determine up-down relationship to solutions (i.e. B -> #)
+        List<Relationship> solRelationshipsListUD = new ArrayList<>();
+        for (String name : solutionKeyListLR) {
+            if (lastRavensFigureUD != null) {
+                RavensFigure rFig = figureMap.get(name);
+                Relationship relationship = new Relationship(lastRavensFigureUD, rFig);
+                solRelationshipsListUD.add(relationship);
+            } else
+                System.out.println("lastRavensFigureUD not defined."); //debug only
+        }
+
+        // Perform transformation analysis for left-right
+        Map<String, Integer> solScoresMap = new HashMap<>();
+        solScoresMap.putAll(determineScores(probRelationshipsListLR, solRelationshipsListLR));
+        solScoresMap.putAll(determineScores(probRelationshipsListUD, solRelationshipsListUD));
+
+        // Todo - maybe do this in determineScores()
+        int maxScore = Collections.max(solScoresMap.values());
+        List<RavensFigure> solutionList = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : solScoresMap.entrySet()) {
+            if (entry.getValue().equals(maxScore)) {
+                String[] solName = entry.getKey().split("-");
+                System.out.println(solName[1]);
+                RavensFigure solution = figureMap.get(solName[1]);
+                if (!solutionList.contains(solution))
+                    solutionList.add(solution);
+            }
+        }
+
+        System.out.println(solutionList);
+
+        return -1;
+    }
+
+    public List<String> createKeyList(Map<String, RavensFigure> figureMap, String regex) {
+        List<String> keyList= new ArrayList<>();
+        for (String name : figureMap.keySet())
+            if (name.matches(regex))
+                keyList.add(name);
+        Collections.sort(keyList);
+
+        return keyList;
+    }
+
+    public List<List<RavensFigure>> getRavensMatrix(Map<String, RavensFigure> figureMap,
+                                                    List<String> figureKeyList,
+                                                    int row,
+                                                    int col) {
+
         figureKeyList.add(figureKeyList.size(), null); //add null object as placeholder
         List<List<RavensFigure>> ravensFiguresList = new ArrayList<>();
         int ind = 0;
@@ -109,221 +203,45 @@ public class Agent {
             ind++;
         }
 
-        // Determine left-right relationships between objects in figures
-        // Todo - maybe make this a map of lists of relationships...
-        List<List<Relationship>> probRelationshipsList = new ArrayList<>(); //list of lists of relationships
-        RavensFigure lastRavensFigure = null;
-        for (List figureList : ravensFiguresList) {
-            List<Relationship> tempRelationshipList = new ArrayList<>();
-            for (int i = 0; i < figureList.size() - 1; i++) {
-                if (figureList.get(i+1) != null) {
-                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
-                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
-                    Relationship relationship = new Relationship(rFig1, rFig2);
-                    tempRelationshipList.add(relationship);
-                } else {
-                    lastRavensFigure = (RavensFigure) figureList.get(i);
-                }
-            }
-            probRelationshipsList.add(tempRelationshipList);
-        }
+        return ravensFiguresList;
+    }
 
-        // Todo - determine up-down relationships as done above
+//    public List<List<RavensFigure>> generateUpDownMatrix(List<List<RavensFigure>> ravensFiguresList) {
+//
+//
+//    }
 
-        // Determine left-right relationship to solutions (i.e. C -> #)
-        List<Relationship> solRelationshipsList = new ArrayList<>();
-        for (String name : solutionKeyList) {
-            if (lastRavensFigure != null) {
-                RavensFigure rFig = figureMap.get(name);
-                Relationship relationship = new Relationship(lastRavensFigure, rFig);
-                solRelationshipsList.add(relationship);
-            } else
-                System.out.println("lastRavensFigure not defined."); //debug only
-        }
+    public Map<String, Integer> determineScores(List<List<Relationship>> probRelationshipList,
+                                                List<Relationship> solRelationshipList) {
 
-        // Todo - determine up-down relationship to solutions (i.e. B -> #) as done above
-
+        Map<String, Integer> solRelationshipScores = new HashMap<>(); //store all scores for evaluation of confidence
         List<List<String>> transformationsList = new ArrayList<>();
-//        List<List<Integer>> numObjDiffList = new ArrayList<>();
         List<List<String>> objDiffList = new ArrayList<>();
-        int max, min = 0;
-        for (int i = 0; i < probRelationshipsList.size() - 1; i++) {
-            transformationsList.add(determineTransformations(probRelationshipsList.get(i)));
-            List<String> objDiffs = new ArrayList<>(determineNumObjGrowing(probRelationshipsList.get(i)));
+        for (int i = 0; i < probRelationshipList.size() - 1; i++) {
+            transformationsList.add(determineTransformations(probRelationshipList.get(i)));
+            List<String> objDiffs = new ArrayList<>(determineNumObjGrowing(probRelationshipList.get(i)));
             objDiffList.add(objDiffs);
         }
 
-//        boolean isGrowing = determineNumObjGrowing(probRelationshipsList, solRelationshipsList);
-
-//        // Determine if number of objects is growing throughout relationships
-//        for (List<Integer> numRelObjDiff : numObjDiffList) {
-//            int diff = 0;
-//            for (Integer objDiff : numRelObjDiff)
-//                diff += objDiff;
-//        }
-
-        int bestScore = 0;
-        Relationship bestRelationship = null;
-        for (Relationship solRelation : solRelationshipsList) {
+        Integer bestScore = null;
+        for (Relationship solRelation : solRelationshipList) {
             List<Relationship> tempRelationships =
-                    new ArrayList<>((probRelationshipsList.get(probRelationshipsList.size()-1)));
+                    new ArrayList<>((probRelationshipList.get(probRelationshipList.size() - 1)));
             tempRelationships.add(solRelation);
             List<String> tempTransformations = determineTransformations(tempRelationships);
             List<String> tempObjDiffs = determineNumObjGrowing(tempRelationships);
 
-            System.out.print("Calling determineScores for "+solRelation.getName()+": ");
-            int score = determineScores(transformationsList, tempTransformations);
-            score += determineScores(objDiffList, tempObjDiffs);
+            System.out.print("Calling determineTransformationScores for " + solRelation.getName() + ": ");
+            int score = determineTransformationScores(transformationsList, tempTransformations);
+            score += determineTransformationScores(objDiffList, tempObjDiffs);
             System.out.println(score);
-            if (score > bestScore) {
+            solRelationshipScores.put(solRelation.getName(), score);
+            if ((bestScore == null) || (score > bestScore)) {
                 bestScore = score;
-                bestRelationship = solRelation; // will only grab the latest best score
             }
         }
 
-
-
-
-
-
-
-
-//        // Todo - DELETE
-//        RavensFigure figA = problem.getFigures().get("A");
-//        RavensFigure figB = problem.getFigures().get("B");
-//        RavensFigure figC = problem.getFigures().get("C");
-//        RavensFigure fig1 = problem.getFigures().get("1");
-//        RavensFigure fig2 = problem.getFigures().get("2");
-//        RavensFigure fig3 = problem.getFigures().get("3");
-//        RavensFigure fig4 = problem.getFigures().get("4");
-//        RavensFigure fig5 = problem.getFigures().get("5");
-//        RavensFigure fig6 = problem.getFigures().get("6");
-//
-//        // Todo - DELETE
-//        Map<String, List<String>>  figAtoFigB = semanticNetwork.formRelationships(figA, figB);
-//        Map<String, List<String>>  figCtoFig1 = semanticNetwork.formRelationships(figC, fig1);
-//        Map<String, List<String>>  figCtoFig2 = semanticNetwork.formRelationships(figC, fig2);
-//        Map<String, List<String>>  figCtoFig3 = semanticNetwork.formRelationships(figC, fig3);
-//        Map<String, List<String>>  figCtoFig4 = semanticNetwork.formRelationships(figC, fig4);
-//        Map<String, List<String>>  figCtoFig5 = semanticNetwork.formRelationships(figC, fig5);
-//        Map<String, List<String>>  figCtoFig6 = semanticNetwork.formRelationships(figC, fig6);
-//
-//        // Todo - DELETE
-//        // Store relationships between C and solutions to map
-//        Map<String, Map<String, List<String>>> step1Sols = new HashMap<>();
-//        step1Sols.put("1", figCtoFig1);
-//        step1Sols.put("2", figCtoFig2);
-//        step1Sols.put("3", figCtoFig3);
-//        step1Sols.put("4", figCtoFig4);
-//        step1Sols.put("5", figCtoFig5);
-//        step1Sols.put("6", figCtoFig6);
-//
-//        // Todo - DELETE
-//        // Determine transformations between figures
-//        int figAtoFigBDiff = figB.getObjects().keySet().size() - figA.getObjects().keySet().size();
-//        List<List<List<String>>> figAtoFigBPerms = generator.generatePermutations(new ArrayList(figAtoFigB.values()));
-//        Map<String, Integer> step1Scores = new HashMap<>();
-//        List<String> sol1List = new ArrayList<>(step1Sols.keySet());
-//        for (String sol : sol1List) {
-//            step1Scores.put(sol, 0);
-//
-//            int figCtoSolDiff = problem.getFigures().get(sol).getObjects().keySet().size()
-//                    - figC.getObjects().keySet().size();
-//
-//            if (figAtoFigBDiff == figCtoSolDiff)
-//                step1Scores.put(sol, Math.abs(figCtoSolDiff) + 6);
-//
-//            List<List<String>> rels = findBestRelationship(new ArrayList<>(step1Sols.get(sol).values()), figAtoFigBPerms);
-//
-//            for (List<List<String>> pair : (List<List<List<String>>>)generator.formPairs(
-//                    rels,
-//                    new ArrayList<>(step1Sols.get(sol).values()))) {
-//
-//                int tempScore = step1Scores.get(sol) + generator.intersection(pair.get(0), pair.get(1)).size();
-//                step1Scores.put(sol, tempScore);
-//            }
-//        }
-//
-//        for (String sol : sol1List) {
-//            if (step1Scores.get(sol).equals(Collections.max(step1Scores.values())))
-//                answers.add(sol);
-//        }
-//
-//        if (answers.size() > 1) {
-//            List<String> figBLocations = getLocations(figB);
-//            Map<String, Integer> step2Scores = new HashMap<>();
-//
-//            for (String ans : answers) {
-//                List<String> ansFigLocations = getLocations(problem.getFigures().get(ans));
-//                int tempScore = generator.intersection(figBLocations, ansFigLocations).size();
-//                step2Scores.put(ans, tempScore);
-//            }
-//
-//            for (String sol : answers)
-//                if (step2Scores.get(sol) < Collections.max(step2Scores.values()))
-//                    answers.remove(sol);
-//
-//        }
-//
-//        if (answers.size() > 1)
-//            return Integer.parseInt(answers.get(random.nextInt(answers.size())));
-//        else if (answers.size() < 1)
-//            return -1; // for skipping
-//        return Integer.parseInt(answers.get(0));
-        return -1;
-    }
-
-    /**
-     * This method gets the locations of the objects in the figure relative
-     * to one-another.
-     *
-     * @param figure
-     * @return The list of relative locations contained in the figure
-     */
-    public List<String> getLocations(RavensFigure figure) {
-        Map<String, RavensObject> figureObjects = figure.getObjects();
-
-        // Get relative locations of each object in the figure
-        List<String> locations = new ArrayList<>();
-        for (String name : figureObjects.keySet()) {
-            Map<String, String> figAttributes = figureObjects.get(name).getAttributes();
-
-            if(figAttributes.get("overlaps") != null)
-                locations.add("overlaps");
-            if(figAttributes.get("inside") != null)
-                locations.add("inside");
-            if(figAttributes.get("above") != null)
-                locations.add("above");
-            if(figAttributes.get("left-of") != null)
-                locations.add("left-of");
-        }
-
-        return locations;
-    }
-
-    // somewhat lost a working product (need to commit more) so this is what I have to resort to :(
-    public List<List<String>> findBestRelationship(List<List<String>> list1, List<List<List<String>>> permList) {
-        int bestScore = 0;
-        List<List<String>> bestList = new ArrayList<>();
-
-        for (List<List<String>> p1 : permList) {
-            int score = 0;
-            List<List<String>> smallest = p1;
-            if (list1.size() < smallest.size())
-                smallest = list1;
-
-            for (int i = 0; i < smallest.size(); i++) {
-                score += generator.intersection(p1.get(i), list1.get(i)).size();
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestList = p1;
-            }
-
-        }
-
-        return bestList;
+        return solRelationshipScores;
     }
 
     //takes in a single row of relationships in the RPM relationship matrix
@@ -341,7 +259,10 @@ public class Agent {
         return simpleTransformations;
     }
 
-    public int determineScores(List<List<String>> transformationsList, List<String> tempTransformations) {
+
+    // Todo - modify this so that the score is per line, allowing the last line to compare to the first or second (for 3x3)
+    public int determineTransformationScores(List<List<String>> transformationsList,
+                                             List<String> tempTransformations) {
         int score = 0;
         for (List<String> transformations : transformationsList) {
             List<String> solTransformations = new ArrayList<>(tempTransformations);

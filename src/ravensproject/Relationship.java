@@ -23,7 +23,7 @@ public class Relationship {
         semanticNetwork = new SemanticNetwork(generator);
         this.fig1 = fig1;
         this.fig2 = fig2;
-        name = fig1.getName() + fig2.getName();
+        name = fig1.getName() + "-" + fig2.getName();
         relationship = semanticNetwork.formRelationships(fig1, fig2);
         objectPairs = semanticNetwork.getObjectPairs();
         transformationMap = semanticNetwork.getTransformationMap();
