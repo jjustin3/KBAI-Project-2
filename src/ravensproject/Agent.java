@@ -79,33 +79,30 @@ public class Agent {
 
         // Get list of figure names for problem
         List<String> figureKeyListLR = createKeyList(figureMap, "[A-Z]");
-        // Todo - get UD
 
         // Get list of figure names for solutions
-        List<String> solutionKeyListLR = createKeyList(figureMap, "[0-9]");
-        // Todo - get UD
+        List<String> solutionKeyList = createKeyList(figureMap, "[0-9]");
 
         // Create list-matrix resembling RPM with null for placeholder on last entry
         List<List<RavensFigure>> ravensFiguresListLR =
                 new ArrayList<>(getRavensMatrix(figureMap, figureKeyListLR, row, col));
-//        List<List<RavensFigure>> ravensFiguresListUD =
-//                new ArrayList<>(generateUpDownMatrix(ravensFiguresListLR));
-        List<List<RavensFigure>> ravensFiguresListUD = ravensFiguresListLR;
-        // Todo - get UD
+        List<List<RavensFigure>> ravensFiguresListUD =
+                new ArrayList<>(generateUpDownMatrix(ravensFiguresListLR));
 
+        // Todo - find a way to move this to a method without forgetting about lastRavensFigure
         // Determine left-right relationships between objects in figures
         List<List<Relationship>> probRelationshipsListLR = new ArrayList<>(); //list of lists of relationships
         RavensFigure lastRavensFigureLR = null;
-        for (List figureList : ravensFiguresListLR) {
+        for (List<RavensFigure> figureList : ravensFiguresListLR) {
             List<Relationship> tempRelationshipList = new ArrayList<>();
             for (int i = 0; i < figureList.size() - 1; i++) {
                 if (figureList.get(i+1) != null) {
-                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
-                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
+                    RavensFigure rFig1 = figureList.get(i);
+                    RavensFigure rFig2 = figureList.get(i+1);
                     Relationship relationship = new Relationship(rFig1, rFig2);
                     tempRelationshipList.add(relationship);
                 } else {
-                    lastRavensFigureLR = (RavensFigure) figureList.get(i);
+                    lastRavensFigureLR = figureList.get(i);
                 }
             }
             probRelationshipsListLR.add(tempRelationshipList);
@@ -114,16 +111,16 @@ public class Agent {
         // Determine up-down relationships between objects in figures
         List<List<Relationship>> probRelationshipsListUD = new ArrayList<>(); //list of lists of relationships
         RavensFigure lastRavensFigureUD = null;
-        for (List figureList : ravensFiguresListUD) {
+        for (List<RavensFigure> figureList : ravensFiguresListUD) {
             List<Relationship> tempRelationshipList = new ArrayList<>();
             for (int i = 0; i < figureList.size() - 1; i++) {
                 if (figureList.get(i+1) != null) {
-                    RavensFigure rFig1 = (RavensFigure) figureList.get(i);
-                    RavensFigure rFig2 = (RavensFigure) figureList.get(i+1);
+                    RavensFigure rFig1 = figureList.get(i);
+                    RavensFigure rFig2 = figureList.get(i+1);
                     Relationship relationship = new Relationship(rFig1, rFig2);
                     tempRelationshipList.add(relationship);
                 } else {
-                    lastRavensFigureUD = (RavensFigure) figureList.get(i);
+                    lastRavensFigureUD = figureList.get(i);
                 }
             }
             probRelationshipsListUD.add(tempRelationshipList);
@@ -131,7 +128,7 @@ public class Agent {
 
         // Determine left-right relationship to solutions (i.e. C -> #)
         List<Relationship> solRelationshipsListLR = new ArrayList<>();
-        for (String name : solutionKeyListLR) {
+        for (String name : solutionKeyList) {
             if (lastRavensFigureLR != null) {
                 RavensFigure rFig = figureMap.get(name);
                 Relationship relationship = new Relationship(lastRavensFigureLR, rFig);
@@ -142,7 +139,7 @@ public class Agent {
 
         // Determine up-down relationship to solutions (i.e. B -> #)
         List<Relationship> solRelationshipsListUD = new ArrayList<>();
-        for (String name : solutionKeyListLR) {
+        for (String name : solutionKeyList) {
             if (lastRavensFigureUD != null) {
                 RavensFigure rFig = figureMap.get(name);
                 Relationship relationship = new Relationship(lastRavensFigureUD, rFig);
@@ -152,26 +149,35 @@ public class Agent {
         }
 
         // Perform transformation analysis for left-right
-        Map<String, Integer> solScoresMap = new HashMap<>();
-        solScoresMap.putAll(determineScores(probRelationshipsListLR, solRelationshipsListLR));
-        solScoresMap.putAll(determineScores(probRelationshipsListUD, solRelationshipsListUD));
+        Map<String, Integer> solScoresMapLR = new HashMap<>();
+        solScoresMapLR.putAll(determineScores(probRelationshipsListLR, solRelationshipsListLR));
+        Map<String, Integer> solScoresMapUD = new HashMap<>();
+        solScoresMapUD.putAll(determineScores(probRelationshipsListUD, solRelationshipsListUD));
 
-        // Todo - maybe do this in determineScores()
-        int maxScore = Collections.max(solScoresMap.values());
-        List<RavensFigure> solutionList = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : solScoresMap.entrySet()) {
-            if (entry.getValue().equals(maxScore)) {
-                String[] solName = entry.getKey().split("-");
-                System.out.println(solName[1]);
-                RavensFigure solution = figureMap.get(solName[1]);
-                if (!solutionList.contains(solution))
-                    solutionList.add(solution);
-            }
-        }
+        // Determine top picks for LR
+        List<RavensFigure> solutionListLR = determineBestSolutions(figureMap, solScoresMapLR);
 
-        System.out.println(solutionList);
+        // Determine top picks for UD
+        List<RavensFigure> solutionListUD = determineBestSolutions(figureMap, solScoresMapLR);
 
-        return -1;
+        // Determine that best solutions are what the two have in common
+        // Todo - maybe check LR first. If too many options, do UD
+        List<RavensFigure> solutionList = generator.intersection(solutionListLR, solutionListUD);
+        if (solutionList.isEmpty())
+            solutionList = solutionListLR;
+
+        List<String> solStrings = new ArrayList<>();
+        for (RavensFigure solution : solutionList)
+            solStrings.add(solution.getName());
+
+        System.out.println(solStrings);
+
+        if (solStrings.size() > 2 || solStrings.size() <= 0) // < 0 should never happen!
+            return -1;
+        else if (solStrings.size() == 2)
+            return Integer.parseInt(solStrings.get(random.nextInt(solutionList.size())));
+
+        return Integer.parseInt(solStrings.get(0));
     }
 
     public List<String> createKeyList(Map<String, RavensFigure> figureMap, String regex) {
@@ -206,10 +212,24 @@ public class Agent {
         return ravensFiguresList;
     }
 
-//    public List<List<RavensFigure>> generateUpDownMatrix(List<List<RavensFigure>> ravensFiguresList) {
-//
-//
-//    }
+    // Todo - check if this works (please work)
+    public List<List<RavensFigure>> generateUpDownMatrix(List<List<RavensFigure>> ravensFiguresList) {
+        List<List<RavensFigure>> ravensFiguresListUD = new ArrayList<>();
+
+        for (int i = 0; i < ravensFiguresList.size(); i++) {
+            List<RavensFigure> tempList = new ArrayList<>();
+            for (int j = 0; j < ravensFiguresList.size(); j++) {
+
+                if (i == j)
+                    tempList.add(j, ravensFiguresList.get(i).get(j));
+                else
+                    tempList.add(j, ravensFiguresList.get(j).get(i));
+            }
+            ravensFiguresListUD.add(i, tempList);
+        }
+
+        return ravensFiguresListUD;
+    }
 
     public Map<String, Integer> determineScores(List<List<Relationship>> probRelationshipList,
                                                 List<Relationship> solRelationshipList) {
@@ -231,10 +251,10 @@ public class Agent {
             List<String> tempTransformations = determineTransformations(tempRelationships);
             List<String> tempObjDiffs = determineNumObjGrowing(tempRelationships);
 
-            System.out.print("Calling determineTransformationScores for " + solRelation.getName() + ": ");
+//            System.out.print("Calling determineTransformationScores for " + solRelation.getName() + ": ");
             int score = determineTransformationScores(transformationsList, tempTransformations);
             score += determineTransformationScores(objDiffList, tempObjDiffs);
-            System.out.println(score);
+//            System.out.println(score);
             solRelationshipScores.put(solRelation.getName(), score);
             if ((bestScore == null) || (score > bestScore)) {
                 bestScore = score;
@@ -298,6 +318,23 @@ public class Agent {
         }
 
         return objDiffs;
+    }
+
+    public List<RavensFigure> determineBestSolutions(Map<String, RavensFigure> figureMap,
+                                                     Map<String, Integer> solScoresMap) {
+
+        int maxScoreLR = Collections.max(solScoresMap.values());
+        List<RavensFigure> solutionList = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : solScoresMap.entrySet()) {
+            if (entry.getValue().equals(maxScoreLR)) {
+                String[] solName = entry.getKey().split("-");
+                RavensFigure solution = figureMap.get(solName[1]);
+                if (!solutionList.contains(solution))
+                    solutionList.add(solution);
+            }
+        }
+
+        return solutionList;
     }
 
 }
