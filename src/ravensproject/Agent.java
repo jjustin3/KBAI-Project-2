@@ -151,15 +151,24 @@ public class Agent {
 
         // Todo - determine up-down relationship to solutions (i.e. B -> #) as done above
 
-        // Todo - call determineTransformations()
-        // Store scores to a list of lists for analysis maybe...
+//        for (List<Relationship> relationships : probRelationshipsList)
+//            System.out.println(determineTransformations(relationships));
 
-        for (List<Relationship> relationships : probRelationshipsList)
-                determineTransformations(relationships, ravensFiguresList, figureMap);
+        List<List<String>> transformations = new ArrayList<>();
+        for (int i = 0; i < probRelationshipsList.size() - 1; i++)
+            transformations.add(determineTransformations(probRelationshipsList.get(i)));
 
+        int bestScore = 0;
+        for (Relationship solRelation : solRelationshipsList) {
+            int score = 0;
+            List<Relationship> tempRelationships =
+                    new ArrayList<>((probRelationshipsList.get(probRelationshipsList.size()-1)));
+            tempRelationships.add(solRelation);
+            List<String> tempTransformations = determineTransformations(tempRelationships);
 
+            score = determineScores(transformations, tempTransformations);
 
-
+        }
 
 
 
@@ -307,55 +316,29 @@ public class Agent {
     }
 
     //takes in a single row of relationships in the RPM relationship matrix
-    public void determineTransformations(List<Relationship> relationships,
-                                         List<List<RavensFigure>> figuresList,
-                                         Map<String, RavensFigure> figureMap) {
+    public List<String> determineTransformations(List<Relationship> relationships) {
 
-//        List<List<List<String>>> list = new ArrayList<>();
-//        for (Relationship relationship : relationships) {
-//            List<List<String>> li = new ArrayList<>();
-//            for (List<RavensObject> pairList : relationship.getObjectPairs()) {
-//                List<String> l = new ArrayList<>();
-//                for (RavensObject object : pairList)
-//                    l.add(object.getName());
-//                li.add(l);
-//            }
-//            list.add(li);
-//        }
-//
-//        System.out.println(list.toString());
-
-        List<List<List<String>>> list = new ArrayList<>();
-        for (Relationship figRelationship : relationships) {
-            Map<String, List<String>>
+        List<String> simpleTransformations = new ArrayList<>();
+        for (Relationship relationship : relationships) {
+            Map<String, List<String>> transformations = relationship.getTransformationMap();
+            for (List<String> pairTransformations : transformations.values())
+                for (String transformation : pairTransformations)
+                    simpleTransformations.add(transformation);
         }
 
-
-
-//        int figAtoFigBDiff = figB.getObjects().keySet().size() - figA.getObjects().keySet().size();
-//        List<List<List<String>>> figAtoFigBPerms = generator.generatePermutations(new ArrayList(figAtoFigB.values()));
-//        Map<String, Integer> step1Scores = new HashMap<>();
-//        List<String> sol1List = new ArrayList<>(step1Sols.keySet());
-//        for (String sol : sol1List) {
-//            step1Scores.put(sol, 0);
-//
-//            int figCtoSolDiff = problem.getFigures().get(sol).getObjects().keySet().size()
-//                    - figC.getObjects().keySet().size();
-//
-//            if (figAtoFigBDiff == figCtoSolDiff)
-//                step1Scores.put(sol, Math.abs(figCtoSolDiff) + 6);
-//
-//            List<List<String>> rels = findBestRelationship(new ArrayList<>(step1Sols.get(sol).values()), figAtoFigBPerms, problem);
-//
-//            for (List<List<String>> pair : (List<List<List<String>>>)generator.formPairs(
-//                    rels,
-//                    new ArrayList<>(step1Sols.get(sol).values()))) {
-//
-//                int tempScore = step1Scores.get(sol) + generator.intersection(pair.get(0), pair.get(1)).size();
-//                step1Scores.put(sol, tempScore);
-//            }
-//        }
+        //Collections.sort(simpleTransformations); //sorting gets rid of in-order status you need for comparing chronologically
+        return simpleTransformations;
     }
+
+    public int determineScores(List<List<String>> transformations, List<String> tempTransformations) {
+//        for (List<String> transformation : transformations)
+//            System.out.println(transformation);
+//
+//        System.out.println(tempTransformations);
+
+        return -1;
+    }
+
 }
 
 /*
@@ -371,4 +354,6 @@ Todo:
 + might have to redo ravenFiguresList for up-down creation (or duplicate)
 
 + evaluate A -> B and B -> C relationships and choose what scores best/equally
+
++ currently probRelationshipList only has first 1 or 2 lines (not last line)
  */

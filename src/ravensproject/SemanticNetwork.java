@@ -48,6 +48,14 @@ public class SemanticNetwork {
             }
         }
 
+        List<String> sizeList = new ArrayList<>();
+        sizeList.add("very small");
+        sizeList.add("small");
+        sizeList.add("medium");
+        sizeList.add("large");
+        sizeList.add("very large");
+        sizeList.add("huge");
+
         // Get all permutations of figure2 for comparison to figure1
         List<List<String>> figure2Permutations = generator.generatePermutations(figure2Names);
 
@@ -64,7 +72,6 @@ public class SemanticNetwork {
                 RavensObject fig2Object = figure2Objects.get(pair.get(1));
                 List<String> fig1AttrList = new ArrayList<>();
                 List<String> fig2AttrList = new ArrayList<>();
-
                 List<String> transformationList = new ArrayList<>();
 
                 if (fig1Object == null && fig2Object != null) {
@@ -89,6 +96,7 @@ public class SemanticNetwork {
                         fig2AttrList.add("sameShape");
                     } else if (fig1Attributes.get("shape") != null && fig2Attributes.get("shape") != null) {
                         fig2AttrList.add("diffShape");
+                        transformationList.add("transform");
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "size")) {
@@ -97,6 +105,12 @@ public class SemanticNetwork {
                     } else if (fig1Attributes.get("size") != null && fig2Attributes.get("size") != null) {
                         score += 2;
                         fig2AttrList.add("diffSize");
+                        if (sizeList.indexOf(fig1Attributes.get("shape"))
+                                < sizeList.indexOf(fig2Attributes.get("shape")))
+                            transformationList.add("grow");
+                        else if (sizeList.indexOf(fig1Attributes.get("shape"))
+                                > sizeList.indexOf(fig2Attributes.get("shape")))
+                            transformationList.add("shrink");
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "fill")) {
@@ -109,10 +123,14 @@ public class SemanticNetwork {
                         List<String> hasFill = new ArrayList<>();
                         hasFill.add(fig1Attributes.get("fill"));
                         hasFill.add(fig2Attributes.get("fill"));
-                        if (!hasFill.contains("yes") || !hasFill.contains("no"))
+                        if (!hasFill.contains("yes") || !hasFill.contains("no")) // Todo - might be && and not ||...
                             fill = determineFill(fig1Attributes.get("fill"), fig2Attributes.get("fill"));
 
                         fig2AttrList.add(fill);
+                        if (fig1Attributes.get("fill").equals("yes") && fig2Attributes.get("fill").equals("no"))
+                            transformationList.add("unfill");
+                        if (fig1Attributes.get("fill").equals("no") && fig2Attributes.get("fill").equals("yes"))
+                            transformationList.add("fill");
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "alignment")) {
@@ -124,6 +142,7 @@ public class SemanticNetwork {
                                 fig1Attributes.get("alignment"), fig2Attributes.get("alignment")
                         );
                         fig2AttrList.add(align);
+                        transformationList.add(align);
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "angle")) {
@@ -134,42 +153,59 @@ public class SemanticNetwork {
                         int angleDiff = Math.abs(Integer.parseInt(fig2Attributes.get("angle"))
                                 - Integer.parseInt(fig1Attributes.get("angle")));
                         fig2AttrList.add(Integer.toString(angleDiff));
+                        transformationList.add(Integer.toString(angleDiff));
                     }
 
                     //this won't work because proportion will change with each object added
-//                    if (fig1Attributes.get("left-of") != null && fig2Attributes.get("left-of") != null) {
-//                        double fig1Proportion = Double.parseDouble(fig1Attributes.get("left-of"))
-//                                / (double) figure1Objects.keySet().size();
-//                        double fig2Proportion = Double.parseDouble(fig2Attributes.get("left-of"))
-//                                / (double) figure2Objects.keySet().size();
-//
-//                        if (fig1Proportion == fig2Proportion)
-//                            score += 5;
-//                    }
-//
-//                    if (fig1Attributes.get("above") != null && fig2Attributes.get("above") != null) {
-//                        double fig1Proportion = Double.parseDouble(fig1Attributes.get("above"))
-//                                / (double) figure1Objects.keySet().size();
-//                        double fig2Proportion = Double.parseDouble(fig2Attributes.get("above"))
-//                                / (double) figure2Objects.keySet().size();
-//
-//                        if (fig1Proportion == fig2Proportion)
-//                            score += 5;
-//                    }
+                    if (fig1Attributes.get("left-of") != null && fig2Attributes.get("left-of") != null) {
+                        String[] fig1LeftOf = fig1Attributes.get("left-of").split(",");
+                        String[] fig2LeftOf = fig1Attributes.get("left-of").split(",");
+                        double fig1Proportion = 1 - ((double) fig1LeftOf.length
+                                / (double) figure1Objects.keySet().size());
+                        double fig2Proportion = 1 - ((double) fig2LeftOf.length
+                                / (double) figure2Objects.keySet().size());
+
+                        if (fig2Proportion == fig1Proportion)
+                            score += 5;
+                    }
+
+                    if (fig1Attributes.get("above") != null && fig2Attributes.get("above") != null) {
+                        String[] fig1Above = fig1Attributes.get("above").split(",");
+                        String[] fig2Above = fig1Attributes.get("above").split(",");
+                        double fig1Proportion = 1 - ((double) fig1Above.length
+                                / (double) figure1Objects.keySet().size());
+                        double fig2Proportion = (double) fig2Above.length
+                                / (double) figure2Objects.keySet().size();
+                        if (fig1Proportion == fig2Proportion)
+                            score += 5;
+                    }
 
 
                 }
+
+                if (transformationList.isEmpty())
+                    transformationList.add("unchanged");
 
                 if (fig1Object != null && !fig1AttrList.isEmpty())
                     relationships.put(fig1Object.getName(), fig1AttrList);
                 if (fig2Object != null && !fig2AttrList.isEmpty())
                     relationships.put(fig2Object.getName(), fig2AttrList);
+
+                String fig1Name = "";
+                String fig2Name = "";
+                if (fig1Object != null)
+                    fig1Name = fig1Object.getName();
+                if (fig2Object != null)
+                    fig2Name = fig2Object.getName();
+
+                transformations.put(fig1Name+"-"+fig2Name, transformationList);
             }
 
             // Update the best relationship if this current score is better than the best
             if (score > bestScore) {
                 bestRelationships = relationships;
                 objectPairs = pairs;
+                transformationMap = transformations;
                 bestScore = score;
             }
 
@@ -305,5 +341,9 @@ public class SemanticNetwork {
 
     public List<List<RavensObject>> getObjectPairs() {
         return objectPairs;
+    }
+
+    public Map<String, List<String>> getTransformationMap() {
+        return transformationMap;
     }
 }

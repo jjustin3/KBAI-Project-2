@@ -14,6 +14,7 @@ public class Relationship {
     private RavensFigure fig1, fig2;
     private Map<String, List<String>> relationship;
     private List<List<RavensObject>> objectPairs;
+    private Map<String, List<String>> transformationMap;
 
     // Todo - maybe pass in SemanticNetwork and Generator to recycle logic
     public Relationship(RavensFigure fig1, RavensFigure fig2) {
@@ -24,6 +25,8 @@ public class Relationship {
         name = fig1.getName() + fig2.getName();
         relationship = semanticNetwork.formRelationships(fig1, fig2);
         objectPairs = semanticNetwork.getObjectPairs();
+        transformationMap = semanticNetwork.getTransformationMap();
+
     }
 
     public String getName() {
@@ -44,6 +47,10 @@ public class Relationship {
 
     public List<List<RavensObject>> getObjectPairs() {
         return objectPairs;
+    }
+
+    public Map<String, List<String>> getTransformationMap() {
+        return transformationMap;
     }
 
 }
