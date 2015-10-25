@@ -154,20 +154,25 @@ public class Agent {
 //        for (List<Relationship> relationships : probRelationshipsList)
 //            System.out.println(determineTransformations(relationships));
 
-        List<List<String>> transformations = new ArrayList<>();
+        List<List<String>> transformationsList = new ArrayList<>();
         for (int i = 0; i < probRelationshipsList.size() - 1; i++)
-            transformations.add(determineTransformations(probRelationshipsList.get(i)));
+            transformationsList.add(determineTransformations(probRelationshipsList.get(i)));
 
         int bestScore = 0;
+        Relationship bestRelationship = null;
         for (Relationship solRelation : solRelationshipsList) {
-            int score = 0;
-            List<Relationship> tempRelationships =
+                        List<Relationship> tempRelationships =
                     new ArrayList<>((probRelationshipsList.get(probRelationshipsList.size()-1)));
             tempRelationships.add(solRelation);
             List<String> tempTransformations = determineTransformations(tempRelationships);
 
-            score = determineScores(transformations, tempTransformations);
-
+            System.out.print("Calling determineScores for "+solRelation.getName()+": ");
+            int score = determineScores(transformationsList, tempTransformations);
+            System.out.println(score);
+            if (score > bestScore) {
+                bestScore = score;
+                bestRelationship = solRelation;
+            }
         }
 
 
@@ -330,13 +335,30 @@ public class Agent {
         return simpleTransformations;
     }
 
-    public int determineScores(List<List<String>> transformations, List<String> tempTransformations) {
-//        for (List<String> transformation : transformations)
-//            System.out.println(transformation);
-//
-//        System.out.println(tempTransformations);
+    public int determineScores(List<List<String>> transformationsList, List<String> tempTransformations) {
+        int score = 0;
+        for (List<String> transformations : transformationsList) {
+//            List<String> probTransformations = new ArrayList<>(transformations);
+            List<String> solTransformations = new ArrayList<>(tempTransformations);
 
-        return -1;
+//            System.out.println(transformations +" -> "+solTransformations);
+            for (String transformation : transformations) {
+                if (solTransformations.contains(transformation)) {
+                    solTransformations.remove(transformation);
+                    score++;
+                } else
+                    score--;
+
+            }
+
+            // Todo - be careful with this...could remove useful information
+            solTransformations.removeAll(Arrays.asList("unchanged"));
+
+            score -= solTransformations.size();
+        }
+
+
+        return score;
     }
 
 }

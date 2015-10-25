@@ -43,9 +43,8 @@ public class SemanticNetwork {
         while (figure1Names.size() != figure2Names.size()) {
             if (figure1Names.size() > figure2Names.size())
                 figure2Names.add(null);
-            else if (figure1Names.size() < figure2Names.size()) {
+            else if (figure1Names.size() < figure2Names.size())
                 figure1Names.add(null);
-            }
         }
 
         List<String> sizeList = new ArrayList<>();
@@ -100,16 +99,16 @@ public class SemanticNetwork {
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "size")) {
-                        score += 5;
+                        score += 5; // Todo - maybe lower these scores
                         fig2AttrList.add("sameSize");
                     } else if (fig1Attributes.get("size") != null && fig2Attributes.get("size") != null) {
                         score += 2;
                         fig2AttrList.add("diffSize");
-                        if (sizeList.indexOf(fig1Attributes.get("shape"))
-                                < sizeList.indexOf(fig2Attributes.get("shape")))
+                        if (sizeList.indexOf(fig1Attributes.get("size"))
+                                < sizeList.indexOf(fig2Attributes.get("size")))
                             transformationList.add("grow");
-                        else if (sizeList.indexOf(fig1Attributes.get("shape"))
-                                > sizeList.indexOf(fig2Attributes.get("shape")))
+                        else if (sizeList.indexOf(fig1Attributes.get("size"))
+                                > sizeList.indexOf(fig2Attributes.get("size")))
                             transformationList.add("shrink");
                     }
 
@@ -130,7 +129,7 @@ public class SemanticNetwork {
                         if (fig1Attributes.get("fill").equals("yes") && fig2Attributes.get("fill").equals("no"))
                             transformationList.add("unfill");
                         if (fig1Attributes.get("fill").equals("no") && fig2Attributes.get("fill").equals("yes"))
-                            transformationList.add("fill");
+                            transformationList.add("fill-"+fill);
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "alignment")) {
@@ -142,7 +141,7 @@ public class SemanticNetwork {
                                 fig1Attributes.get("alignment"), fig2Attributes.get("alignment")
                         );
                         fig2AttrList.add(align);
-                        transformationList.add(align);
+                        transformationList.add("align-"+align);
                     }
 
                     if (compareAttributes(fig1Attributes, fig2Attributes, "angle")) {
@@ -183,6 +182,7 @@ public class SemanticNetwork {
 
                 }
 
+                // Todo - get rid of this and add "unchanged" for every fig attribute if unchanged
                 if (transformationList.isEmpty())
                     transformationList.add("unchanged");
 
