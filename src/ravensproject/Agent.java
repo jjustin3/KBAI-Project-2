@@ -5,6 +5,7 @@ package ravensproject;
 //import java.io.File;
 //import javax.imageio.ImageIO;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -198,12 +199,14 @@ public class Agent {
                 System.out.println("lastRavensFigureDiag not defined."); //debug only
         }
 
-        Relationship diagSolutionGuess = null;
+        Map<String, Integer> diagRelationshipScores = new HashMap<>();
+        List<RavensFigure> diagSolutions;
         String diagSolution = null;
         if (!diagonalRelationships.isEmpty()) {
-            diagSolutionGuess = determineDiagonalScore(diagonalRelationships, solRelationshipsListDiag);
-            String[] solutionGuess = diagSolutionGuess.getName().split("-");
-            diagSolution = solutionGuess[1];
+            diagRelationshipScores.putAll(determineDiagonalScore(diagonalRelationships, solRelationshipsListDiag));
+            diagSolutions = new ArrayList<>(determineBestSolutions(figureMap, diagRelationshipScores));
+            if (diagSolutions.size() == 1)
+                diagSolution = diagSolutions.get(0).getName();
         }
 
 
@@ -322,14 +325,19 @@ public class Agent {
         return solRelationshipScores;
     }
 
-    public Relationship determineDiagonalScore(List<Relationship> diagRelationshipList,
+    public Map<String, Integer> determineDiagonalScore(List<Relationship> diagRelationshipList,
                                                        List<Relationship> solRelationshipList) {
 
         Map<String, Integer> solRelationshipScores = new HashMap<>(); //store all scores for evaluation of confidence
         List<String> diagTransformations = determineTransformations(diagRelationshipList); //same thing as getTransformations
-        Integer bestScore = null;
-        Relationship bestRelationship = null;
+        List<String> objDiffs = new ArrayList<>(determineNumObjGrowing(diagRelationshipList));
+        List<List<String>> tempDiagObjDiffs = new ArrayList<>();
+        tempDiagObjDiffs.add(objDiffs);
         for (Relationship solRelationship : solRelationshipList) {
+            List<Relationship> tempSolRelationshipList = new ArrayList<>();
+            tempSolRelationshipList.add(solRelationship);
+            List<String> tempSolObjDiffs = new ArrayList<>(determineNumObjGrowing(tempSolRelationshipList));
+
             List<String> solTransformations = new ArrayList<>();
             Map<String, List<String>> transformations = solRelationship.getTransformationMap();
             for (List<String> pairTransformations : transformations.values())
@@ -347,19 +355,15 @@ public class Agent {
 
             }
 
-            // Todo - be careful with this...could remove useful information
             tempTransformations.removeAll(Arrays.asList("unchanged"));
 
+            score += determineTransformationScores(tempDiagObjDiffs, tempSolObjDiffs);
             score -= tempTransformations.size();
 
             solRelationshipScores.put(solRelationship.getName(), score);
-            if ((bestScore == null) || (score > bestScore)) {
-                bestScore = score;
-                bestRelationship = solRelationship;
-            }
         }
 
-        return bestRelationship;
+        return solRelationshipScores;
     }
 
     //takes in a single row of relationships in the RPM relationship matrix
@@ -393,7 +397,6 @@ public class Agent {
 
             }
 
-            // Todo - be careful with this...could remove useful information
             solTransformations.removeAll(Arrays.asList("unchanged"));
 
             score -= solTransformations.size();
