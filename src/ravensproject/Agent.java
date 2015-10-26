@@ -163,14 +163,54 @@ public class Agent {
         // Determine that best solutions are what the two have in common
         // Todo - maybe check LR first. If too many options, do UD
         List<RavensFigure> solutionList = generator.intersection(solutionListLR, solutionListUD);
-        if (solutionList.isEmpty())
-            solutionList = solutionListLR;
+
+        // If solutionList is empty, assign it one of the non-empty solution lists
+        if (solutionList.isEmpty()) {
+            if (!solutionListLR.isEmpty())
+                solutionList = solutionListLR;
+            else if (!solutionListUD.isEmpty())
+                solutionList = solutionListUD;
+        }
+
+        // Determine diagonal relationship
+        List<RavensFigure> ravensFiguresDiag = getRavensFiguresDiagonal(ravensFiguresListLR);
+        List<Relationship> diagonalRelationships = new ArrayList<>();
+        RavensFigure lastRavensFigureDiag = null;
+        for (int i = 0; i < ravensFiguresDiag.size() - 1; i++) {
+            if (ravensFiguresDiag.get(i + 1) != null) {
+                RavensFigure rFig1 = ravensFiguresDiag.get(i);
+                RavensFigure rFig2 = ravensFiguresDiag.get(i + 1);
+                Relationship relationship = new Relationship(rFig1, rFig2);
+                diagonalRelationships.add(relationship);
+            } else {
+                lastRavensFigureDiag = ravensFiguresDiag.get(i);
+            }
+        }
+
+        List<Relationship> solRelationshipsListDiag = new ArrayList<>();
+        for (String name : solutionKeyList) {
+            if (lastRavensFigureDiag != null) {
+                RavensFigure rFig = figureMap.get(name);
+                Relationship relationship = new Relationship(lastRavensFigureDiag, rFig);
+                solRelationshipsListDiag.add(relationship);
+            } else
+                System.out.println("lastRavensFigureDiag not defined."); //debug only
+        }
+
+        Relationship diagSolutionGuess = null;
+        String diagSolution = null;
+        if (!diagonalRelationships.isEmpty()) {
+            diagSolutionGuess = determineDiagonalScore(diagonalRelationships, solRelationshipsListDiag);
+            String[] solutionGuess = diagSolutionGuess.getName().split("-");
+            diagSolution = solutionGuess[1];
+        }
 
         List<String> solStrings = new ArrayList<>();
         for (RavensFigure solution : solutionList)
             solStrings.add(solution.getName());
 
         System.out.println(solStrings);
+
 
         if (solStrings.size() > 2 || solStrings.size() <= 0) // < 0 should never happen!
             return -1;
@@ -212,7 +252,6 @@ public class Agent {
         return ravensFiguresList;
     }
 
-    // Todo - check if this works (please work)
     public List<List<RavensFigure>> generateUpDownMatrix(List<List<RavensFigure>> ravensFiguresList) {
         List<List<RavensFigure>> ravensFiguresListUD = new ArrayList<>();
 
@@ -229,6 +268,19 @@ public class Agent {
         }
 
         return ravensFiguresListUD;
+    }
+
+    public List<RavensFigure> getRavensFiguresDiagonal(List<List<RavensFigure>> ravensFiguresList) {
+        List<RavensFigure> ravensFigures = new ArrayList<>();
+
+        for (int i = 0; i < ravensFiguresList.size(); i++) {
+            for (int j = 0; j < ravensFiguresList.size(); j++) {
+                if (i == j)
+                    ravensFigures.add(i, ravensFiguresList.get(i).get(j));
+            }
+        }
+
+        return ravensFigures;
     }
 
     public Map<String, Integer> determineScores(List<List<Relationship>> probRelationshipList,
@@ -251,10 +303,8 @@ public class Agent {
             List<String> tempTransformations = determineTransformations(tempRelationships);
             List<String> tempObjDiffs = determineNumObjGrowing(tempRelationships);
 
-//            System.out.print("Calling determineTransformationScores for " + solRelation.getName() + ": ");
             int score = determineTransformationScores(transformationsList, tempTransformations);
             score += determineTransformationScores(objDiffList, tempObjDiffs);
-//            System.out.println(score);
             solRelationshipScores.put(solRelation.getName(), score);
             if ((bestScore == null) || (score > bestScore)) {
                 bestScore = score;
@@ -262,6 +312,46 @@ public class Agent {
         }
 
         return solRelationshipScores;
+    }
+
+    public Relationship determineDiagonalScore(List<Relationship> diagRelationshipList,
+                                                       List<Relationship> solRelationshipList) {
+
+        Map<String, Integer> solRelationshipScores = new HashMap<>(); //store all scores for evaluation of confidence
+        List<String> diagTransformations = determineTransformations(diagRelationshipList); //same thing as getTransformations
+        Integer bestScore = null;
+        Relationship bestRelationship = null;
+        for (Relationship solRelationship : solRelationshipList) {
+            List<String> solTransformations = new ArrayList<>();
+            Map<String, List<String>> transformations = solRelationship.getTransformationMap();
+            for (List<String> pairTransformations : transformations.values())
+                for (String transformation : pairTransformations)
+                    solTransformations.add(transformation);
+
+            List<String> tempTransformations = new ArrayList<>(solTransformations);
+            int score = 0;
+            for (String transformation : diagTransformations) {
+                if (tempTransformations.contains(transformation)) {
+                    tempTransformations.remove(transformation);
+                    score++;
+                } else
+                    score--;
+
+            }
+
+            // Todo - be careful with this...could remove useful information
+            tempTransformations.removeAll(Arrays.asList("unchanged"));
+
+            score -= tempTransformations.size();
+
+            solRelationshipScores.put(solRelationship.getName(), score);
+            if ((bestScore == null) || (score > bestScore)) {
+                bestScore = score;
+                bestRelationship = solRelationship;
+            }
+        }
+
+        return bestRelationship;
     }
 
     //takes in a single row of relationships in the RPM relationship matrix
@@ -315,6 +405,11 @@ public class Agent {
                 objDiffs.add("shrinking");
 //            else
 //                objDiffs.add("same")
+        }
+
+        if (objDiffs.contains("growing") && objDiffs.contains("shrinking")) {
+            objDiffs.remove("growing");
+            objDiffs.remove("shrinking");
         }
 
         return objDiffs;

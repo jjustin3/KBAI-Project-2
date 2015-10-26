@@ -112,6 +112,32 @@ public class SemanticNetwork {
                             transformationList.add("shrink");
                     }
 
+                    if (compareAttributes(fig1Attributes, fig2Attributes, "width")) {
+                        fig2AttrList.add("sameWidth");
+                    } else if (fig1Attributes.get("width") != null && fig2Attributes.get("width") != null) {
+                        score += 2;
+                        fig2AttrList.add("diffWidth");
+                        if (sizeList.indexOf(fig1Attributes.get("width"))
+                                < sizeList.indexOf(fig2Attributes.get("width")))
+                            transformationList.add("widen");
+                        else if (sizeList.indexOf(fig1Attributes.get("width"))
+                                > sizeList.indexOf(fig2Attributes.get("width")))
+                            transformationList.add("compress");
+                    }
+
+                    if (compareAttributes(fig1Attributes, fig2Attributes, "height")) {
+                        fig2AttrList.add("sameHeight");
+                    } else if (fig1Attributes.get("height") != null && fig2Attributes.get("height") != null) {
+                        score += 2;
+                        fig2AttrList.add("diffHeight");
+                        if (sizeList.indexOf(fig1Attributes.get("height"))
+                                < sizeList.indexOf(fig2Attributes.get("height")))
+                            transformationList.add("heighten");
+                        else if (sizeList.indexOf(fig1Attributes.get("height"))
+                                > sizeList.indexOf(fig2Attributes.get("height")))
+                            transformationList.add("shorten");
+                    }
+
                     if (compareAttributes(fig1Attributes, fig2Attributes, "fill")) {
                         score += 5;
                         fig2AttrList.add("sameFill");
