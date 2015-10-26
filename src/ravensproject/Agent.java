@@ -172,6 +172,7 @@ public class Agent {
                 solutionList = solutionListUD;
         }
 
+        // THIS IS A LAST RESORT FOR MORE THAN ONE ANSWER!
         // Determine diagonal relationship
         List<RavensFigure> ravensFiguresDiag = getRavensFiguresDiagonal(ravensFiguresListLR);
         List<Relationship> diagonalRelationships = new ArrayList<>();
@@ -205,17 +206,24 @@ public class Agent {
             diagSolution = solutionGuess[1];
         }
 
+
+
+
         List<String> solStrings = new ArrayList<>();
         for (RavensFigure solution : solutionList)
             solStrings.add(solution.getName());
 
         System.out.println(solStrings);
+        if (diagSolution != null)
+            System.out.println(diagSolution);
 
-
-        if (solStrings.size() > 2 || solStrings.size() <= 0) // < 0 should never happen!
+        if (solStrings.size() > 1) {
+            if (diagSolution != null && solStrings.contains(diagSolution))
+                return Integer.parseInt(diagSolution);
+            else if (solStrings.size() < 4)
+                return Integer.parseInt(solStrings.get(random.nextInt(solutionList.size())));
+        } else if (solStrings.size() > 3 || solStrings.isEmpty())
             return -1;
-        else if (solStrings.size() == 2)
-            return Integer.parseInt(solStrings.get(random.nextInt(solutionList.size())));
 
         return Integer.parseInt(solStrings.get(0));
     }
@@ -365,7 +373,6 @@ public class Agent {
                     simpleTransformations.add(transformation);
         }
 
-        //Collections.sort(simpleTransformations); //sorting gets rid of in-order status you need for comparing chronologically
         return simpleTransformations;
     }
 
@@ -391,7 +398,6 @@ public class Agent {
 
             score -= solTransformations.size();
         }
-
 
         return score;
     }
@@ -433,20 +439,3 @@ public class Agent {
     }
 
 }
-
-/*
-Todo:
-+ maybe sub-in solution into ravensFiguresList to run analysis on
---> too much re-analysis of items already analyzed
---> try to just sub-in and form relation between sub and surrounding
-    figures (i.e. only C -> # and B -> # instead of A -> B, A -> C
-    as well...
-+ create separate method for comparing relationships between objects
---> called after left-right relationship forming and called after up-down
-    relationship forming
-+ might have to redo ravenFiguresList for up-down creation (or duplicate)
-
-+ evaluate A -> B and B -> C relationships and choose what scores best/equally
-
-+ currently probRelationshipList only has first 1 or 2 lines (not last line)
- */
