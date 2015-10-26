@@ -212,21 +212,30 @@ public class Agent {
         if (diagSolution != null)
             System.out.println(diagSolution);
 
+        // If there is exactly one solution, return it
         // If there are more than one solution, check if a diagonal exists and use it
         // If there are less than four solutions and no diagonal, guess
         // If there are more than four solutions, skip
-        // If there is exactly one solution, return it
-        if (solStrings.size() > 1) {
+        if (solStrings.size() == 1)
+            return Integer.parseInt(solStrings.get(0));
+        else if (solStrings.size() > 1 && solStrings.size() < 4) {
             if (diagSolution != null && solStrings.contains(diagSolution))
                 return Integer.parseInt(diagSolution);
-            else if (solStrings.size() < 4)
+            else
                 return Integer.parseInt(solStrings.get(random.nextInt(solutionList.size())));
-        } else if (solStrings.size() > 3 || solStrings.isEmpty())
-            return -1;
-
-        return Integer.parseInt(solStrings.get(0));
+        }
+        return -1;
     }
 
+    /**
+     * This method creates a key list to be used for iteration when building out Raven
+     * Progressive Matrices. The regex determines whether it will be a solution key
+     * list or a problem figure key list.
+     *
+     * @param figureMap
+     * @param regex
+     * @return The list of keys
+     */
     public List<String> createKeyList(Map<String, RavensFigure> figureMap, String regex) {
         List<String> keyList= new ArrayList<>();
         for (String name : figureMap.keySet())
@@ -237,6 +246,15 @@ public class Agent {
         return keyList;
     }
 
+    /**
+     * This method creates a List of Lists resembling a Raven Progressive Matrix.
+     *
+     * @param figureMap
+     * @param figureKeyList
+     * @param row
+     * @param col
+     * @return The Raven Progressive Matrix
+     */
     public List<List<RavensFigure>> getRavensMatrix(Map<String, RavensFigure> figureMap,
                                                     List<String> figureKeyList,
                                                     int row,
@@ -259,6 +277,14 @@ public class Agent {
         return ravensFiguresList;
     }
 
+    /**
+     * This method generates a Raven Progressive Matrix reading from the top of a column
+     * to the bottom of a column. This gives the agent a different approach when trying
+     * to find solutions.
+     *
+     * @param ravensFiguresList
+     * @return The Raven Progressive Matrix
+     */
     public List<List<RavensFigure>> generateUpDownMatrix(List<List<RavensFigure>> ravensFiguresList) {
         List<List<RavensFigure>> ravensFiguresListUD = new ArrayList<>();
 
@@ -277,6 +303,13 @@ public class Agent {
         return ravensFiguresListUD;
     }
 
+    /**
+     * This method gets the diagonal elements (excluding the last, unknown one) which allows
+     * the agent another different approach to find or reinforce a solution.
+     *
+     * @param ravensFiguresList
+     * @return The diagonal list of RavenFigures
+     */
     public List<RavensFigure> getRavensFiguresDiagonal(List<List<RavensFigure>> ravensFiguresList) {
         List<RavensFigure> ravensFigures = new ArrayList<>();
 
@@ -290,6 +323,15 @@ public class Agent {
         return ravensFigures;
     }
 
+    /**
+     * This method determines the scores for comparing the first row(s) of a Raven Progressive
+     * Matrix to the last row. The score can vary due to a solution being pushed into the last
+     * row and then evaluated.
+     *
+     * @param probRelationshipList
+     * @param solRelationshipList
+     * @return The map of scores for each solution tried
+     */
     public Map<String, Integer> determineScores(List<List<Relationship>> probRelationshipList,
                                                 List<Relationship> solRelationshipList) {
 
@@ -321,6 +363,14 @@ public class Agent {
         return solRelationshipScores;
     }
 
+    /**
+     * This method determines the diagonal scores in the same manner as above. A solution is attempted
+     * and the scores are returned for each of these.
+     *
+     * @param diagRelationshipList
+     * @param solRelationshipList
+     * @return The map of scores for each attempted solution
+     */
     public Map<String, Integer> determineDiagonalScore(List<Relationship> diagRelationshipList,
                                                        List<Relationship> solRelationshipList) {
 
@@ -362,7 +412,13 @@ public class Agent {
         return solRelationshipScores;
     }
 
-    //takes in a single row of relationships in the RPM relationship matrix
+    /**
+     * This method determines the transformations along a row in a Raven Progressive
+     * Matrix. It is used for scoring.
+     *
+     * @param relationships
+     * @return The list of transformations along a row
+     */
     public List<String> determineTransformations(List<Relationship> relationships) {
 
         List<String> simpleTransformations = new ArrayList<>();
@@ -376,6 +432,13 @@ public class Agent {
         return simpleTransformations;
     }
 
+    /**
+     * This method determines the scores of the transformations.
+     *
+     * @param transformationsList
+     * @param tempTransformations
+     * @return The score for the attempted transformation comparison
+     */
     public int determineTransformationScores(List<List<String>> transformationsList,
                                              List<String> tempTransformations) {
         int score = 0;
@@ -398,6 +461,13 @@ public class Agent {
         return score;
     }
 
+    /**
+     * This method determines if the number of objects between relationships
+     * are increasing or decreasing. If it alternates, it is ignored.
+     *
+     * @param relationshipList
+     * @return The list of object differences between relationships
+     */
     public List<String> determineNumObjGrowing(List<Relationship> relationshipList) {
         List<String> objDiffs = new ArrayList<>();
         for (Relationship relationship : relationshipList) {
@@ -415,6 +485,13 @@ public class Agent {
         return objDiffs;
     }
 
+    /**
+     * This method determines which solutions hold the highest score.
+     *
+     * @param figureMap
+     * @param solScoresMap
+     * @return The list of RavensFigures holding the highest score
+     */
     public List<RavensFigure> determineBestSolutions(Map<String, RavensFigure> figureMap,
                                                      Map<String, Integer> solScoresMap) {
 
