@@ -5,7 +5,6 @@ package ravensproject;
 //import java.io.File;
 //import javax.imageio.ImageIO;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -25,7 +24,6 @@ public class Agent {
 
     private Generator generator;
     private Random random;
-    private SemanticNetwork semanticNetwork;
 
     /**
      * The default constructor for your Agent. Make sure to execute any
@@ -38,7 +36,6 @@ public class Agent {
     public Agent() {
         generator = new Generator();
         random = new Random();
-        semanticNetwork = new SemanticNetwork(generator);
     }
     /**
      * The primary method for solving incoming Raven's Progressive Matrices.
@@ -67,9 +64,6 @@ public class Agent {
      */
     public int Solve(RavensProblem problem) {
         System.out.println("Solving "+problem.getName());
-
-        // Array for potential answers
-        List<String> answers = new ArrayList<>();
 
         // Get row and col size
         int row = Character.getNumericValue(problem.getProblemType().charAt(0));
@@ -127,6 +121,21 @@ public class Agent {
             probRelationshipsListUD.add(tempRelationshipList);
         }
 
+        // Determine diagonal relationship
+        List<RavensFigure> ravensFiguresDiag = getRavensFiguresDiagonal(ravensFiguresListLR);
+        List<Relationship> diagonalRelationships = new ArrayList<>();
+        RavensFigure lastRavensFigureDiag = null;
+        for (int i = 0; i < ravensFiguresDiag.size() - 1; i++) {
+            if (ravensFiguresDiag.get(i + 1) != null) {
+                RavensFigure rFig1 = ravensFiguresDiag.get(i);
+                RavensFigure rFig2 = ravensFiguresDiag.get(i + 1);
+                Relationship relationship = new Relationship(rFig1, rFig2);
+                diagonalRelationships.add(relationship);
+            } else {
+                lastRavensFigureDiag = ravensFiguresDiag.get(i);
+            }
+        }
+
         // Determine left-right relationship to solutions (i.e. C -> #)
         List<Relationship> solRelationshipsListLR = new ArrayList<>();
         for (String name : solutionKeyList) {
@@ -149,6 +158,17 @@ public class Agent {
                 System.out.println("lastRavensFigureUD not defined."); //debug only
         }
 
+        // Determine diagonal relationship to solutions (i.e. A -> #)
+        List<Relationship> solRelationshipsListDiag = new ArrayList<>();
+        for (String name : solutionKeyList) {
+            if (lastRavensFigureDiag != null) {
+                RavensFigure rFig = figureMap.get(name);
+                Relationship relationship = new Relationship(lastRavensFigureDiag, rFig);
+                solRelationshipsListDiag.add(relationship);
+            } else
+                System.out.println("lastRavensFigureDiag not defined."); //debug only
+        }
+
         // Perform transformation analysis for left-right
         Map<String, Integer> solScoresMapLR = new HashMap<>();
         solScoresMapLR.putAll(determineScores(probRelationshipsListLR, solRelationshipsListLR));
@@ -162,43 +182,9 @@ public class Agent {
         List<RavensFigure> solutionListUD = determineBestSolutions(figureMap, solScoresMapLR);
 
         // Determine that best solutions are what the two have in common
-        // Todo - maybe check LR first. If too many options, do UD
         List<RavensFigure> solutionList = generator.intersection(solutionListLR, solutionListUD);
 
-        // If solutionList is empty, assign it one of the non-empty solution lists
-        if (solutionList.isEmpty()) {
-            if (!solutionListLR.isEmpty())
-                solutionList = solutionListLR;
-            else if (!solutionListUD.isEmpty())
-                solutionList = solutionListUD;
-        }
-
-        // THIS IS A LAST RESORT FOR MORE THAN ONE ANSWER!
-        // Determine diagonal relationship
-        List<RavensFigure> ravensFiguresDiag = getRavensFiguresDiagonal(ravensFiguresListLR);
-        List<Relationship> diagonalRelationships = new ArrayList<>();
-        RavensFigure lastRavensFigureDiag = null;
-        for (int i = 0; i < ravensFiguresDiag.size() - 1; i++) {
-            if (ravensFiguresDiag.get(i + 1) != null) {
-                RavensFigure rFig1 = ravensFiguresDiag.get(i);
-                RavensFigure rFig2 = ravensFiguresDiag.get(i + 1);
-                Relationship relationship = new Relationship(rFig1, rFig2);
-                diagonalRelationships.add(relationship);
-            } else {
-                lastRavensFigureDiag = ravensFiguresDiag.get(i);
-            }
-        }
-
-        List<Relationship> solRelationshipsListDiag = new ArrayList<>();
-        for (String name : solutionKeyList) {
-            if (lastRavensFigureDiag != null) {
-                RavensFigure rFig = figureMap.get(name);
-                Relationship relationship = new Relationship(lastRavensFigureDiag, rFig);
-                solRelationshipsListDiag.add(relationship);
-            } else
-                System.out.println("lastRavensFigureDiag not defined."); //debug only
-        }
-
+        // If there exist only one diagonal solution, use it. If not, ignore it
         Map<String, Integer> diagRelationshipScores = new HashMap<>();
         List<RavensFigure> diagSolutions;
         String diagSolution = null;
@@ -209,9 +195,15 @@ public class Agent {
                 diagSolution = diagSolutions.get(0).getName();
         }
 
+        // If solutionList is empty, assign it one of the non-empty solution lists
+        if (solutionList.isEmpty()) {
+            if (!solutionListLR.isEmpty())
+                solutionList = solutionListLR;
+            else if (!solutionListUD.isEmpty())
+                solutionList = solutionListUD;
+        }
 
-
-
+        // Put the solution names into a list of strings
         List<String> solStrings = new ArrayList<>();
         for (RavensFigure solution : solutionList)
             solStrings.add(solution.getName());
@@ -220,6 +212,10 @@ public class Agent {
         if (diagSolution != null)
             System.out.println(diagSolution);
 
+        // If there are more than one solution, check if a diagonal exists and use it
+        // If there are less than four solutions and no diagonal, guess
+        // If there are more than four solutions, skip
+        // If there is exactly one solution, return it
         if (solStrings.size() > 1) {
             if (diagSolution != null && solStrings.contains(diagSolution))
                 return Integer.parseInt(diagSolution);
@@ -380,8 +376,6 @@ public class Agent {
         return simpleTransformations;
     }
 
-
-    // Todo - modify this so that the score is per line, allowing the last line to compare to the first or second (for 3x3)
     public int determineTransformationScores(List<List<String>> transformationsList,
                                              List<String> tempTransformations) {
         int score = 0;
@@ -394,7 +388,6 @@ public class Agent {
                     score++;
                 } else
                     score--;
-
             }
 
             solTransformations.removeAll(Arrays.asList("unchanged"));
@@ -412,8 +405,6 @@ public class Agent {
                 objDiffs.add("growing");
             else if (relationship.getNumObjDiff() < 0)
                 objDiffs.add("shrinking");
-//            else
-//                objDiffs.add("same")
         }
 
         if (objDiffs.contains("growing") && objDiffs.contains("shrinking")) {
